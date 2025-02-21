@@ -296,10 +296,8 @@ RegisterNetEvent('qbx_management:server:depositMoney', function(groupType, amoun
         player.PlayerData.charinfo.firstname .. ' ' ..
         player.PlayerData.charinfo.lastname
     if player.Functions.RemoveMoney('cash', amount) then
-        -- exports['qb-banking']:AddMoney(player.PlayerData[groupType].name, amount, 'Boss Deposit')
         exports.fd_banking:AddMoney(player.PlayerData[groupType].name, amount, reason)
         exports.qbx_core:Notify(src, 'Successfully deposited $' .. amount, 'success')
-        -- print('Successfully deposited $' .. amount)
     end
 end)
 
@@ -316,7 +314,7 @@ RegisterNetEvent('qbx_management:server:withdrawMoney', function(groupType, amou
         exports.fd_banking:RemoveMoney(player.PlayerData[groupType].name, amount, reason)
         player.Functions.AddMoney('cash', amount)
 
-        -- New Method
+        -- New Method - Not working yet, waiting on fd_banking dev response
         -- exports.fd_banking:doTransfer(
         --     source,
         --     account.job.id,
