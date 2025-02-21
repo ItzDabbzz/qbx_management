@@ -15,10 +15,15 @@ Business and gang management menu for Qbox
   - Respectfully no, figure it out yourself 💜
 
 ## Images
+
 ![bossmenu](https://raw.githubusercontent.com/ItzDabbzz/qbx_management/refs/heads/main/.github/images/boss_menu.png)
+
 ![banking](https://raw.githubusercontent.com/ItzDabbzz/qbx_management/refs/heads/main/.github/images/banking.png)
+
 ![payroll_menu](https://raw.githubusercontent.com/ItzDabbzz/qbx_management/refs/heads/main/.github/images/payroll_menu.png)
+
 ![pay_history](https://raw.githubusercontent.com/ItzDabbzz/qbx_management/refs/heads/main/.github/images/payroll_history.png)
+
 ![pay_manage](https://raw.githubusercontent.com/ItzDabbzz/qbx_management/refs/heads/main/.github/images/payroll_salaries_edit.png)
 
 ## Basic Install Docs
