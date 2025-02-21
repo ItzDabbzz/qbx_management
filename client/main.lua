@@ -84,9 +84,11 @@ local function employeeList(groupType)
     local groupName = QBX.PlayerData[groupType].name
     local employees = lib.callback.await('qbx_management:server:getEmployees', false, groupName, groupType)
     for _, employee in pairs(employees) do
+        local cid = '\n● ' .. locale('menu.citizen_id') .. employee.cid
+        local head = '● '
         local employeesData = {
             title = employee.name,
-            description = groupType == 'job' and JOBS[groupName].grades[employee.grade].name or GANGS[groupName].grades[employee.grade].name,
+            description = groupType == 'job' and head .. JOBS[groupName].grades[employee.grade].name .. cid or head .. GANGS[groupName].grades[employee.grade].name .. cid,
             onSelect = function()
                 manageEmployee(employee, groupName, groupType)
             end,
@@ -94,8 +96,8 @@ local function employeeList(groupType)
         if employee.hours and employee.last_checkin then
             employeesData.metadata = {
                 { label = locale('menu.employee_status'), value = employee.onduty and locale('menu.on_duty') or locale('menu.off_duty') },
-                { label = locale('menu.hours_in_days'), value = employee.hours },
-                { label = locale('menu.last_checkin'), value = employee.last_checkin },
+                { label = locale('menu.hours_in_days'),   value = employee.hours },
+                { label = locale('menu.last_checkin'),    value = employee.last_checkin },
             }
         end
         employeesMenu[#employeesMenu + 1] = employeesData
@@ -121,7 +123,7 @@ local function showHireMenu(groupType)
         if player[groupType].name ~= hireName then
             hireMenu[#hireMenu + 1] = {
                 title = player.name,
-                description = locale('menu.citizen_id')..player.citizenid..' - '..locale('menu.id')..player.source,
+                description = locale('menu.citizen_id') .. player.citizenid .. ' - ' .. locale('menu.id') .. player.source,
                 onSelect = function()
                     lib.callback.await('qbx_management:server:hireEmployee', false, player.source, groupType)
                     OpenBossMenu(groupType)
@@ -191,7 +193,7 @@ local function createZone(zoneInfo)
             debug = config.debugPoly,
             options = {
                 {
-                    name = zoneInfo.groupName..'_menu',
+                    name = zoneInfo.groupName .. '_menu',
                     icon = 'right-to-bracket',
                     label = zoneInfo.type == 'gang' and locale('menu.gang_menu') or locale('menu.boss_menu'),
                     canInteract = function()
