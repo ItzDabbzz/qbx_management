@@ -24,14 +24,16 @@ end
 
 local function initializeEmployeePayroll(citizenid, job, grade)
     local defaultPayment = JOBS[job].grades[grade].payment
-    MySQL.insert('INSERT INTO management_payroll (citizenid, job, grade, salary) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE grade = ?, salary = ?', {
-        citizenid,
-        job,
-        grade,
-        defaultPayment,
-        grade,
-        defaultPayment
-    })
+    MySQL.insert(
+        'INSERT INTO management_payroll (citizenid, job, grade, salary) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE grade = ?, salary = ?',
+        {
+            citizenid,
+            job,
+            grade,
+            defaultPayment,
+            grade,
+            defaultPayment
+        })
 end
 
 local function getMenuEntries(groupName, groupType)
@@ -45,7 +47,8 @@ local function getMenuEntries(groupName, groupType)
         local namePrefix = player.Offline and '❌ ' or '🟢 '
         local playerActivityData = groupType == 'job' and GetPlayerActivityData(citizenid, groupName) or nil
         local playerClockData = playersClockedIn[player.PlayerData.source]
-        local playerLastCheckIn = playerClockData and os.date(config.formatDateTime, playerClockData.time) or playerActivityData?.last_checkin
+        local playerLastCheckIn = playerClockData and os.date(config.formatDateTime, playerClockData.time) or
+            playerActivityData?.last_checkin
         menuEntries[#menuEntries + 1] = {
             cid = citizenid,
             grade = grade,
@@ -108,7 +111,8 @@ lib.callback.register('qbx_management:server:updateGrade', function(source, citi
     end
 
     if employee then
-        local gradeName = groupType == 'gang' and GANGS[jobName].grades[newGrade].name or JOBS[jobName].grades[newGrade].name
+        local gradeName = groupType == 'gang' and GANGS[jobName].grades[newGrade].name or
+            JOBS[jobName].grades[newGrade].name
         exports.qbx_core:Notify(employee.PlayerData.source, locale('success.promoted_to') .. gradeName .. '.', 'success')
     end
     exports.qbx_core:Notify(source, locale('success.promoted'), 'success')
@@ -149,7 +153,14 @@ lib.callback.register('qbx_management:server:hireEmployee', function(source, emp
     local organizationLabel = player.PlayerData[groupType].label
     exports.qbx_core:Notify(source, locale('success.hired_into', targetFullName, organizationLabel), 'success')
     exports.qbx_core:Notify(target.PlayerData.source, locale('success.hired_to') .. organizationLabel, 'success')
-    logger.log({ source = 'qbx_management', event = 'hireEmployee', message = string.format('%s | %s hired %s into %s at grade %s', logArea, playerFullName, targetFullName, organizationLabel, 0), webhook = config.discordWebhook })
+    logger.log({
+        source = 'qbx_management',
+        event = 'hireEmployee',
+        message = string.format(
+            '%s | %s hired %s into %s at grade %s', logArea, playerFullName, targetFullName, organizationLabel, 0),
+        webhook =
+            config.discordWebhook
+    })
 end)
 
 -- Returns playerdata for a given table of player server ids.
@@ -184,7 +195,8 @@ end)
 ---@param groupType GroupType
 ---@return boolean success
 local function fireEmployee(employeeCitizenId, boss, groupName, groupType)
-    local employee = exports.qbx_core:GetPlayerByCitizenId(employeeCitizenId) or exports.qbx_core:GetOfflinePlayer(employeeCitizenId)
+    local employee = exports.qbx_core:GetPlayerByCitizenId(employeeCitizenId) or
+        exports.qbx_core:GetOfflinePlayer(employeeCitizenId)
     if employee.PlayerData.citizenid == boss.PlayerData.citizenid then
         local message = groupType == 'gang' and locale('error.kick_yourself') or locale('error.fire_yourself')
         exports.qbx_core:Notify(boss.PlayerData.source, message, 'error')
@@ -195,7 +207,8 @@ local function fireEmployee(employeeCitizenId, boss, groupName, groupType)
         return false
     end
 
-    local employeeGrade = groupType == 'job' and employee.PlayerData.jobs?[groupName] or employee.PlayerData.gangs?[groupName]
+    local employeeGrade = groupType == 'job' and employee.PlayerData.jobs?[groupName] or
+        employee.PlayerData.gangs?[groupName]
     local bossGrade = groupType == 'job' and boss.PlayerData.jobs?[groupName] or boss.PlayerData.gangs?[groupName]
     if employeeGrade >= bossGrade then
         exports.qbx_core:Notify(boss.PlayerData.source, locale('error.fire_boss'), 'error')
@@ -211,7 +224,8 @@ local function fireEmployee(employeeCitizenId, boss, groupName, groupType)
     end
 
     if not employee.Offline then
-        local message = groupType == 'gang' and locale('error.you_gang_fired', GANGS[groupName].label) or locale('error.you_job_fired', JOBS[groupName].label)
+        local message = groupType == 'gang' and locale('error.you_gang_fired', GANGS[groupName].label) or
+            locale('error.you_job_fired', JOBS[groupName].label)
         exports.qbx_core:Notify(employee.PlayerData.source, message, 'error')
     end
 
@@ -233,13 +247,21 @@ lib.callback.register('qbx_management:server:fireEmployee', function(source, emp
         return
     end
     local success = fireEmployee(employee, player, player.PlayerData[groupType].name, groupType)
-    local employeeFullName = firedEmployee.PlayerData.charinfo.firstname .. ' ' .. firedEmployee.PlayerData.charinfo.lastname
+    local employeeFullName = firedEmployee.PlayerData.charinfo.firstname ..
+        ' ' .. firedEmployee.PlayerData.charinfo.lastname
 
     if success then
         local logArea = groupType == 'gang' and 'Gang' or 'Boss'
         local logType = groupType == 'gang' and locale('error.gang_fired') or locale('error.job_fired')
         exports.qbx_core:Notify(source, logType, 'success')
-        logger.log({ source = 'qbx_management', event = 'fireEmployee', message = string.format('%s | %s fired %s from %s', logArea, playerFullName, employeeFullName, organizationLabel), webhook = config.discordWebhook })
+        logger.log({
+            source = 'qbx_management',
+            event = 'fireEmployee',
+            message = string.format(
+                '%s | %s fired %s from %s', logArea, playerFullName, employeeFullName, organizationLabel),
+            webhook = config
+                .discordWebhook
+        })
     else
         exports.qbx_core:Notify(source, locale('error.unable_fire'), 'error')
     end
@@ -249,41 +271,63 @@ lib.callback.register('qbx_management:server:getBossMenus', function()
     return menus
 end)
 
-lib.callback.register('qbx_management:server:getAccount', function(_, job)
-    local account = exports['qb-banking']:GetAccount(job)
-    if not account then
-        exports['qb-banking']:CreateJobAccount(job, 1000)
-        account = exports['qb-banking']:GetAccount(job)
+lib.callback.register('qbx_management:server:getAccount', function(src, job)
+    local jAct = exports.fd_banking:getBusinessAccount(job)
+    local _p = exports.qbx_core:GetPlayer(src)
+    local bAct = exports.fd_banking:getPersonalAccount(_p.PlayerData.citizenid)
+    --- Returns {"id":31,"type":"business","name":"LSPD","is_frozen":false,"business":"police","iban":"496651","is_society":true,"balance":1000}
+    if not jAct then
+        exports.fd_banking:AddMoney(job, 5000, 'Initial Deposit')
+        jAct = exports.fd_banking:getBusinessAccount(job)
     end
-    print(json.encode(account))
-    return account
+    -- print(json.encode(jAct))
+    return {
+        job = jAct,
+        personal = bAct
+    }
 end)
 
 
-RegisterNetEvent('qbx_management:server:depositMoney', function(groupType, amount)
+RegisterNetEvent('qbx_management:server:depositMoney', function(groupType, amount, account)
     local src = source
     local player = exports.qbx_core:GetPlayer(src)
-    print('Group Type: ' .. groupType .. ' | Amount: ' .. amount .. ' | Source: ' .. src)
     if not player.PlayerData[groupType].isboss then return end
-    print('Player is boss')
+    local reason = 'Boss Menu Deposit By: ' ..
+        player.PlayerData.charinfo.firstname .. ' ' ..
+        player.PlayerData.charinfo.lastname
     if player.Functions.RemoveMoney('cash', amount) then
-        exports['qb-banking']:AddMoney(player.PlayerData[groupType].name, amount, 'Boss Deposit')
+        -- exports['qb-banking']:AddMoney(player.PlayerData[groupType].name, amount, 'Boss Deposit')
+        exports.fd_banking:AddMoney(player.PlayerData[groupType].name, amount, reason)
         exports.qbx_core:Notify(src, 'Successfully deposited $' .. amount, 'success')
-        print('Successfully deposited $' .. amount)
+        -- print('Successfully deposited $' .. amount)
     end
 end)
 
-RegisterNetEvent('qbx_management:server:withdrawMoney', function(groupType, amount)
+RegisterNetEvent('qbx_management:server:withdrawMoney', function(groupType, amount, account)
     local src = source
     local player = exports.qbx_core:GetPlayer(src)
-    print('Group Type: ' .. groupType .. ' | Amount: ' .. amount .. ' | Source: ' .. src)
     if not player.PlayerData[groupType].isboss then return end
-    print('Player is boss')
-    local account = exports['qb-banking']:GetAccount(player.PlayerData[groupType].name)
-    if account.balance >= amount then
-        exports['qb-banking']:RemoveMoney(player.PlayerData[groupType].name, amount, 'Boss Withdrawal')
+    local act = exports.fd_banking:GetAccount(player.PlayerData[groupType].name)
+    local reason = 'Boss Menu Withdrawal By: ' ..
+        player.PlayerData.charinfo.firstname .. ' ' ..
+        player.PlayerData.charinfo.lastname
+    if act >= amount then
+        -- Old Method
+        exports.fd_banking:RemoveMoney(player.PlayerData[groupType].name, amount, reason)
         player.Functions.AddMoney('cash', amount)
-        print('Successfully withdrew $' .. amount)
+
+        -- New Method
+        -- exports.fd_banking:doTransfer(
+        --     source,
+        --     account.job.id,
+        --     source,
+        --     amount,
+        --     account.personal.id,
+        --     'Boss Withdrawl',
+        --     nil,
+        --     false
+        -- )
+
         exports.qbx_core:Notify(src, 'Successfully withdrew $' .. amount, 'success')
     else
         exports.qbx_core:Notify(src, 'Insufficient funds', 'error')
@@ -291,7 +335,9 @@ RegisterNetEvent('qbx_management:server:withdrawMoney', function(groupType, amou
 end)
 
 lib.callback.register('qbx_management:server:getPayrollData', function(_, groupName)
-    local result = MySQL.query.await('SELECT p.*, CONCAT(JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.firstname")), " ", JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.lastname"))) as name FROM management_payroll p LEFT JOIN players c ON p.citizenid = c.citizenid WHERE p.job = ?', { groupName })
+    local result = MySQL.query.await(
+        'SELECT p.*, CONCAT(JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.firstname")), " ", JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.lastname"))) as name FROM management_payroll p LEFT JOIN players c ON p.citizenid = c.citizenid WHERE p.job = ?',
+        { groupName })
     local payrollData = {}
     for _, v in pairs(result) do
         payrollData[v.citizenid] = v
@@ -300,8 +346,11 @@ lib.callback.register('qbx_management:server:getPayrollData', function(_, groupN
 end)
 
 lib.callback.register('qbx_management:server:getPayrollHistory', function(_, groupName)
-    return MySQL.query.await('SELECT h.*, CONCAT(JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.firstname")), " ", JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.lastname"))) as name FROM management_payroll_history h LEFT JOIN players c ON h.citizenid = c.citizenid WHERE h.job = ? ORDER BY h.paid_at DESC LIMIT 50', { groupName })
+    return MySQL.query.await(
+        'SELECT h.*, DATE_FORMAT(h.paid_at, "%Y-%m-%d %H:%i:%s") as paid_at, CONCAT(JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.firstname")), " ", JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.lastname"))) as name FROM management_payroll_history h LEFT JOIN players c ON h.citizenid = c.citizenid WHERE h.job = ? ORDER BY h.paid_at DESC LIMIT 50',
+        { groupName })
 end)
+
 
 RegisterNetEvent('qbx_management:server:setSalary', function(citizenid, job, amount)
     local src = source
@@ -309,13 +358,15 @@ RegisterNetEvent('qbx_management:server:setSalary', function(citizenid, job, amo
 
     if not player.PlayerData.job.isboss then return end
 
-    MySQL.insert.await('INSERT INTO management_payroll (citizenid, job, grade, salary) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE salary = ?', {
-        citizenid,
-        job,
-        player.PlayerData.job.grade.level or 0, -- Default grade
-        amount,
-        amount
-    })
+    MySQL.insert.await(
+        'INSERT INTO management_payroll (citizenid, job, grade, salary) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE salary = ?',
+        {
+            citizenid,
+            job,
+            player.PlayerData.job.grade.level or 0, -- Default grade
+            amount,
+            amount
+        })
 
     exports.qbx_core:Notify(src, 'Salary updated successfully', 'success')
 end)

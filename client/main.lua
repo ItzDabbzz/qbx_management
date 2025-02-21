@@ -47,7 +47,8 @@ local function manageEmployee(player, groupName, groupType)
             title = gradeTitle.name,
             description = locale('menu.grade') .. groupGrade,
             onSelect = function()
-                lib.callback.await('qbx_management:server:updateGrade', false, player.cid, player.grade, tonumber(groupGrade), groupType)
+                lib.callback.await('qbx_management:server:updateGrade', false, player.cid, player.grade,
+                    tonumber(groupGrade), groupType)
                 OpenBossMenu(groupType)
             end,
         }
@@ -88,7 +89,8 @@ local function employeeList(groupType)
         local head = '● '
         local employeesData = {
             title = employee.name,
-            description = groupType == 'job' and head .. JOBS[groupName].grades[employee.grade].name .. cid or head .. GANGS[groupName].grades[employee.grade].name .. cid,
+            description = groupType == 'job' and head .. JOBS[groupName].grades[employee.grade].name .. cid or
+                head .. GANGS[groupName].grades[employee.grade].name .. cid,
             onSelect = function()
                 manageEmployee(employee, groupName, groupType)
             end,
@@ -123,7 +125,8 @@ local function showHireMenu(groupType)
         if player[groupType].name ~= hireName then
             hireMenu[#hireMenu + 1] = {
                 title = player.name,
-                description = locale('menu.citizen_id') .. player.citizenid .. ' - ' .. locale('menu.id') .. player.source,
+                description = locale('menu.citizen_id') ..
+                    player.citizenid .. ' - ' .. locale('menu.id') .. player.source,
                 onSelect = function()
                     lib.callback.await('qbx_management:server:hireEmployee', false, player.source, groupType)
                     OpenBossMenu(groupType)
@@ -169,11 +172,18 @@ function OpenBossMenu(groupType)
             description = 'Manage organization finances',
             icon = 'money-bill-transfer',
             onSelect = function()
-                local account = lib.callback.await('qbx_management:server:getAccount', false, QBX.PlayerData[groupType].name)
+                local account = lib.callback.await('qbx_management:server:getAccount', false,
+                    QBX.PlayerData[groupType].name)
+                local frozen = account.job.is_frozen and '🟢 ' or '❌ '
+                local desc = 'Job Balance: $' .. account.job.balance ..
+                    '\nJob IBAN: ' .. account.job.iban ..
+                    '\nIs Frozen: ' .. frozen ..
+                    '\nPersonal Balance: $' .. account.personal.balance
+
                 local bankMenu = {
                     {
-                        title = 'Account Balance',
-                        description = '$' .. account.account_balance,
+                        title = 'Banking Info',
+                        description = desc,
                         icon = 'wallet'
                     },
                     {
@@ -185,7 +195,7 @@ function OpenBossMenu(groupType)
                                 { type = 'number', label = 'Amount', description = 'Amount to deposit', required = true, min = 1 }
                             })
                             if input then
-                                TriggerServerEvent('qbx_management:server:depositMoney', groupType, input[1])
+                                TriggerServerEvent('qbx_management:server:depositMoney', groupType, input[1], account)
                             end
                         end
                     },
@@ -198,7 +208,7 @@ function OpenBossMenu(groupType)
                                 { type = 'number', label = 'Amount', description = 'Amount to withdraw', required = true, min = 1 }
                             })
                             if input then
-                                TriggerServerEvent('qbx_management:server:withdrawMoney', groupType, input[1])
+                                TriggerServerEvent('qbx_management:server:withdrawMoney', groupType, input[1], account)
                             end
                         end
                     }
@@ -232,13 +242,21 @@ function OpenBossMenu(groupType)
                         description = 'View past salary payments',
                         icon = 'clock-rotate-left',
                         onSelect = function()
-                            local history = lib.callback.await('qbx_management:server:getPayrollHistory', false, groupName)
+                            local history = lib.callback.await('qbx_management:server:getPayrollHistory', false,
+                                groupName)
                             local historyMenu = {}
 
                             for _, record in pairs(history) do
+                                -- Extract date components from MySQL datetime string
+                                local year, month, day, hour, min, sec = record.paid_at:match(
+                                "(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
+
+                                -- Create readable time string
+                                local timeString = string.format('%s-%s-%s at %s:%s', year, month, day, hour, min)
+
                                 historyMenu[#historyMenu + 1] = {
                                     title = record.name,
-                                    description = ('$%s paid on %s'):format(record.amount, record.paid_at),
+                                    description = ('$%s paid on %s'):format(record.amount, timeString),
                                     icon = 'receipt'
                                 }
                             end
@@ -271,7 +289,8 @@ function OpenBossMenu(groupType)
                                             { type = 'number', label = 'Amount', description = 'Salary amount', required = true, min = 0 }
                                         })
                                         if input then
-                                            TriggerServerEvent('qbx_management:server:setSalary', employee.cid, groupName, input[1])
+                                            TriggerServerEvent('qbx_management:server:setSalary', employee.cid, groupName,
+                                                input[1])
                                         end
                                     end
                                 }
@@ -332,7 +351,8 @@ local function createZone(zoneInfo)
                     icon = 'right-to-bracket',
                     label = zoneInfo.type == 'gang' and locale('menu.gang_menu') or locale('menu.boss_menu'),
                     canInteract = function()
-                        return zoneInfo.groupName == QBX.PlayerData[zoneInfo.type].name and QBX.PlayerData[zoneInfo.type].isboss
+                        return zoneInfo.groupName == QBX.PlayerData[zoneInfo.type].name and
+                            QBX.PlayerData[zoneInfo.type].isboss
                     end,
                     onSelect = function()
                         OpenBossMenu(zoneInfo.type)
@@ -348,7 +368,8 @@ local function createZone(zoneInfo)
             debug = config.debugPoly,
             onEnter = function()
                 if zoneInfo.groupName == QBX.PlayerData[zoneInfo.type].name and QBX.PlayerData[zoneInfo.type].isboss then
-                    lib.showTextUI(zoneInfo.type == 'gang' and locale('menu.gang_management') or locale('menu.boss_management'))
+                    lib.showTextUI(zoneInfo.type == 'gang' and locale('menu.gang_management') or
+                        locale('menu.boss_management'))
                 end
             end,
             onExit = function()
