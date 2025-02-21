@@ -45,7 +45,7 @@ local function manageEmployee(player, groupName, groupType)
     for groupGrade, gradeTitle in pairs(employeeLoop) do
         employeeMenu[#employeeMenu + 1] = {
             title = gradeTitle.name,
-            description = locale('menu.grade')..groupGrade,
+            description = locale('menu.grade') .. groupGrade,
             onSelect = function()
                 lib.callback.await('qbx_management:server:updateGrade', false, player.cid, player.grade, tonumber(groupGrade), groupType)
                 OpenBossMenu(groupType)
@@ -164,6 +164,141 @@ function OpenBossMenu(groupType)
                 showHireMenu(groupType)
             end,
         },
+        {
+            title = 'Banking',
+            description = 'Manage organization finances',
+            icon = 'money-bill-transfer',
+            onSelect = function()
+                local account = lib.callback.await('qbx_management:server:getAccount', false, QBX.PlayerData[groupType].name)
+                local bankMenu = {
+                    {
+                        title = 'Account Balance',
+                        description = '$' .. account.account_balance,
+                        icon = 'wallet'
+                    },
+                    {
+                        title = 'Deposit Money',
+                        description = 'Add funds to organization account',
+                        icon = 'money-bill-trend-up',
+                        onSelect = function()
+                            local input = lib.inputDialog('Deposit Money', {
+                                { type = 'number', label = 'Amount', description = 'Amount to deposit', required = true, min = 1 }
+                            })
+                            if input then
+                                TriggerServerEvent('qbx_management:server:depositMoney', groupType, input[1])
+                            end
+                        end
+                    },
+                    {
+                        title = 'Withdraw Money',
+                        description = 'Remove funds from organization account',
+                        icon = 'money-bill-transfer',
+                        onSelect = function()
+                            local input = lib.inputDialog('Withdraw Money', {
+                                { type = 'number', label = 'Amount', description = 'Amount to withdraw', required = true, min = 1 }
+                            })
+                            if input then
+                                TriggerServerEvent('qbx_management:server:withdrawMoney', groupType, input[1])
+                            end
+                        end
+                    }
+                }
+
+                lib.registerContext({
+                    id = 'bankingMenu',
+                    title = 'Organization Banking',
+                    menu = 'openBossMenu',
+                    options = bankMenu
+                })
+
+                lib.showContext('bankingMenu')
+            end
+        },
+        {
+            title = 'Payroll Management',
+            description = 'Manage employee salaries and payments',
+            icon = 'money-check-dollar',
+            onSelect = function()
+                local groupName = QBX.PlayerData[groupType].name
+                local employees = lib.callback.await('qbx_management:server:getEmployees', false, groupName, groupType)
+                -- print('Employees:', json.encode(employees))
+
+                local salaryData = lib.callback.await('qbx_management:server:getPayrollData', false, groupName)
+                -- print('Salary Data:', json.encode(salaryData))
+
+                local payrollMenu = {
+                    {
+                        title = 'Payment History',
+                        description = 'View past salary payments',
+                        icon = 'clock-rotate-left',
+                        onSelect = function()
+                            local history = lib.callback.await('qbx_management:server:getPayrollHistory', false, groupName)
+                            local historyMenu = {}
+
+                            for _, record in pairs(history) do
+                                historyMenu[#historyMenu + 1] = {
+                                    title = record.name,
+                                    description = ('$%s paid on %s'):format(record.amount, record.paid_at),
+                                    icon = 'receipt'
+                                }
+                            end
+
+                            lib.registerContext({
+                                id = 'payrollHistory',
+                                title = 'Payment History',
+                                menu = 'payrollMenu',
+                                options = historyMenu
+                            })
+
+                            lib.showContext('payrollHistory')
+                        end
+                    },
+                    {
+                        title = 'View/Edit Salaries',
+                        description = 'Set employee salary levels',
+                        icon = 'money-bill',
+                        onSelect = function()
+                            local salaryMenu = {}
+
+                            for _, employee in pairs(employees) do
+                                local currentSalary = salaryData[employee.cid] and salaryData[employee.cid].salary or 0
+                                salaryMenu[#salaryMenu + 1] = {
+                                    title = employee.name,
+                                    description = ('Current Salary: $%s'):format(currentSalary),
+                                    icon = 'user',
+                                    onSelect = function()
+                                        local input = lib.inputDialog('Set Salary', {
+                                            { type = 'number', label = 'Amount', description = 'Salary amount', required = true, min = 0 }
+                                        })
+                                        if input then
+                                            TriggerServerEvent('qbx_management:server:setSalary', employee.cid, groupName, input[1])
+                                        end
+                                    end
+                                }
+                            end
+
+                            lib.registerContext({
+                                id = 'salaryMenu',
+                                title = 'Employee Salaries',
+                                menu = 'payrollMenu',
+                                options = salaryMenu
+                            })
+
+                            lib.showContext('salaryMenu')
+                        end
+                    }
+                }
+
+                lib.registerContext({
+                    id = 'payrollMenu',
+                    title = 'Payroll Management',
+                    menu = 'openBossMenu',
+                    options = payrollMenu
+                })
+
+                lib.showContext('payrollMenu')
+            end
+        }
     }
 
 

@@ -15,6 +15,19 @@ for groupName, menuInfo in pairs(config.menus) do
     menus[#menus + 1] = menuInfo
 end
 
+
+local function initializeEmployeePayroll(citizenid, job, grade)
+    local defaultPayment = JOBS[job].grades[grade].payment
+    MySQL.insert('INSERT INTO management_payroll (citizenid, job, grade, salary) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE grade = ?, salary = ?', {
+        citizenid,
+        job,
+        grade,
+        defaultPayment,
+        grade,
+        defaultPayment
+    })
+end
+
 local function getMenuEntries(groupName, groupType)
     local menuEntries = {}
 
@@ -226,6 +239,77 @@ lib.callback.register('qbx_management:server:getBossMenus', function()
     return menus
 end)
 
+lib.callback.register('qbx_management:server:getAccount', function(_, job)
+    local account = exports['qb-banking']:GetAccount(job)
+    if not account then
+        exports['qb-banking']:CreateJobAccount(job, 1000)
+        account = exports['qb-banking']:GetAccount(job)
+    end
+    print(json.encode(account))
+    return account
+end)
+
+
+RegisterNetEvent('qbx_management:server:depositMoney', function(groupType, amount)
+    local src = source
+    local player = exports.qbx_core:GetPlayer(src)
+    print('Group Type: ' .. groupType .. ' | Amount: ' .. amount .. ' | Source: ' .. src)
+    if not player.PlayerData[groupType].isboss then return end
+    print('Player is boss')
+    if player.Functions.RemoveMoney('cash', amount) then
+        exports['qb-banking']:AddMoney(player.PlayerData[groupType].name, amount, 'Boss Deposit')
+        exports.qbx_core:Notify(src, 'Successfully deposited $' .. amount, 'success')
+        print('Successfully deposited $' .. amount)
+    end
+end)
+
+RegisterNetEvent('qbx_management:server:withdrawMoney', function(groupType, amount)
+    local src = source
+    local player = exports.qbx_core:GetPlayer(src)
+    print('Group Type: ' .. groupType .. ' | Amount: ' .. amount .. ' | Source: ' .. src)
+    if not player.PlayerData[groupType].isboss then return end
+    print('Player is boss')
+    local account = exports['qb-banking']:GetAccount(player.PlayerData[groupType].name)
+    if account.balance >= amount then
+        exports['qb-banking']:RemoveMoney(player.PlayerData[groupType].name, amount, 'Boss Withdrawal')
+        player.Functions.AddMoney('cash', amount)
+        print('Successfully withdrew $' .. amount)
+        exports.qbx_core:Notify(src, 'Successfully withdrew $' .. amount, 'success')
+    else
+        exports.qbx_core:Notify(src, 'Insufficient funds', 'error')
+    end
+end)
+
+lib.callback.register('qbx_management:server:getPayrollData', function(_, groupName)
+    local result = MySQL.query.await('SELECT p.*, CONCAT(JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.firstname")), " ", JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.lastname"))) as name FROM management_payroll p LEFT JOIN players c ON p.citizenid = c.citizenid WHERE p.job = ?', { groupName })
+    local payrollData = {}
+    for _, v in pairs(result) do
+        payrollData[v.citizenid] = v
+    end
+    return payrollData
+end)
+
+lib.callback.register('qbx_management:server:getPayrollHistory', function(_, groupName)
+    return MySQL.query.await('SELECT h.*, CONCAT(JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.firstname")), " ", JSON_UNQUOTE(JSON_EXTRACT(c.charinfo, "$.lastname"))) as name FROM management_payroll_history h LEFT JOIN players c ON h.citizenid = c.citizenid WHERE h.job = ? ORDER BY h.paid_at DESC LIMIT 50', { groupName })
+end)
+
+RegisterNetEvent('qbx_management:server:setSalary', function(citizenid, job, amount)
+    local src = source
+    local player = exports.qbx_core:GetPlayer(src)
+
+    if not player.PlayerData.job.isboss then return end
+
+    MySQL.insert.await('INSERT INTO management_payroll (citizenid, job, grade, salary) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE salary = ?', {
+        citizenid,
+        job,
+        player.PlayerData.job.grade.level or 0, -- Default grade
+        amount,
+        amount
+    })
+
+    exports.qbx_core:Notify(src, 'Salary updated successfully', 'success')
+end)
+
 ---Creates a boss zone for the specified group
 ---@param menuInfo MenuInfo
 local function registerBossMenu(menuInfo)
@@ -292,4 +376,20 @@ end)
 ---@param source number
 AddEventHandler('playerDropped', function()
     onPlayerUnload(source)
+end)
+
+
+local function populateExistingEmployees()
+    local jobs = exports.qbx_core:GetJobs()
+    for jobName, jobData in pairs(jobs) do
+        local employees = exports.qbx_core:GetGroupMembers(jobName, 'job')
+        for _, employee in pairs(employees) do
+            initializeEmployeePayroll(employee.citizenid, jobName, employee.grade)
+        end
+    end
+end
+
+AddEventHandler('onResourceStart', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    populateExistingEmployees()
 end)
