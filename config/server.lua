@@ -19,5 +19,11 @@ return {
             rotation = 39.68,
             type = 'gang',
         },
+        police = {
+            coords = vec3(-579.099670, -128.374268, 47.320488),
+            size = vec3(1.5, 1.5, 1.5),
+            rotation = 39.68,
+            type = 'job',
+        }
     },
 }

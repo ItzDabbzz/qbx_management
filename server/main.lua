@@ -1,6 +1,12 @@
 lib.versionCheck('Qbox-project/qbx_management')
-if not lib.checkDependency('qbx_core', '1.18.0', true) then error() return end
-if not lib.checkDependency('ox_lib', '3.13.0', true) then error() return end
+if not lib.checkDependency('qbx_core', '1.18.0', true) then
+    error()
+    return
+end
+if not lib.checkDependency('ox_lib', '3.13.0', true) then
+    error()
+    return
+end
 
 local config = require 'config.server'
 local logger = require '@qbx_core.modules.logger'
@@ -43,7 +49,7 @@ local function getMenuEntries(groupName, groupType)
         menuEntries[#menuEntries + 1] = {
             cid = citizenid,
             grade = grade,
-            name = namePrefix..player.PlayerData.charinfo.firstname..' '..player.PlayerData.charinfo.lastname,
+            name = namePrefix .. player.PlayerData.charinfo.firstname .. ' ' .. player.PlayerData.charinfo.lastname,
             onduty = player.PlayerData.job.onduty and not player.Offline,
             hours = playerActivityData?.hours,
             last_checkin = playerLastCheckIn
@@ -103,7 +109,7 @@ lib.callback.register('qbx_management:server:updateGrade', function(source, citi
 
     if employee then
         local gradeName = groupType == 'gang' and GANGS[jobName].grades[newGrade].name or JOBS[jobName].grades[newGrade].name
-        exports.qbx_core:Notify(employee.PlayerData.source, locale('success.promoted_to')..gradeName..'.', 'success')
+        exports.qbx_core:Notify(employee.PlayerData.source, locale('success.promoted_to') .. gradeName .. '.', 'success')
     end
     exports.qbx_core:Notify(source, locale('success.promoted'), 'success')
 end)
@@ -130,6 +136,7 @@ lib.callback.register('qbx_management:server:hireEmployee', function(source, emp
         assert(success, errorResult?.message)
         success, errorResult = exports.qbx_core:SetPlayerPrimaryJob(target.PlayerData.citizenid, groupName)
         assert(success, errorResult?.message)
+        initializeEmployeePayroll(target.PlayerData.citizenid, groupName, 0)
     else
         local success, errorResult = exports.qbx_core:AddPlayerToGang(target.PlayerData.citizenid, groupName, 0)
         assert(success, errorResult?.message)
@@ -137,12 +144,12 @@ lib.callback.register('qbx_management:server:hireEmployee', function(source, emp
         assert(success, errorResult?.message)
     end
 
-    local playerFullName = player.PlayerData.charinfo.firstname..' '..player.PlayerData.charinfo.lastname
-    local targetFullName = target.PlayerData.charinfo.firstname..' '..target.PlayerData.charinfo.lastname
+    local playerFullName = player.PlayerData.charinfo.firstname .. ' ' .. player.PlayerData.charinfo.lastname
+    local targetFullName = target.PlayerData.charinfo.firstname .. ' ' .. target.PlayerData.charinfo.lastname
     local organizationLabel = player.PlayerData[groupType].label
     exports.qbx_core:Notify(source, locale('success.hired_into', targetFullName, organizationLabel), 'success')
-    exports.qbx_core:Notify(target.PlayerData.source, locale('success.hired_to')..organizationLabel, 'success')
-    logger.log({source = 'qbx_management', event = 'hireEmployee', message = string.format('%s | %s hired %s into %s at grade %s', logArea, playerFullName, targetFullName, organizationLabel, 0), webhook = config.discordWebhook})
+    exports.qbx_core:Notify(target.PlayerData.source, locale('success.hired_to') .. organizationLabel, 'success')
+    logger.log({ source = 'qbx_management', event = 'hireEmployee', message = string.format('%s | %s hired %s into %s at grade %s', logArea, playerFullName, targetFullName, organizationLabel, 0), webhook = config.discordWebhook })
 end)
 
 -- Returns playerdata for a given table of player server ids.
@@ -154,7 +161,7 @@ lib.callback.register('qbx_management:server:getPlayers', function(_, closePlaye
         local player = exports.qbx_core:GetPlayer(v.id)
         players[#players + 1] = {
             id = v.id,
-            name = player.PlayerData.charinfo.firstname..' '..player.PlayerData.charinfo.lastname,
+            name = player.PlayerData.charinfo.firstname .. ' ' .. player.PlayerData.charinfo.lastname,
             citizenid = player.PlayerData.citizenid,
             job = player.PlayerData.job,
             gang = player.PlayerData.gang,
@@ -217,19 +224,22 @@ end
 lib.callback.register('qbx_management:server:fireEmployee', function(source, employee, groupType)
     local player = exports.qbx_core:GetPlayer(source)
     local firedEmployee = exports.qbx_core:GetPlayerByCitizenId(employee) or exports.qbx_core:GetOfflinePlayer(employee)
-    local playerFullName = player.PlayerData.charinfo.firstname..' '..player.PlayerData.charinfo.lastname
+    local playerFullName = player.PlayerData.charinfo.firstname .. ' ' .. player.PlayerData.charinfo.lastname
     local organizationLabel = player.PlayerData[groupType].label
 
     if not player.PlayerData[groupType].isboss then return end
-    if not firedEmployee then lib.print.error("not able to find player with citizenid", employee) return end
+    if not firedEmployee then
+        lib.print.error("not able to find player with citizenid", employee)
+        return
+    end
     local success = fireEmployee(employee, player, player.PlayerData[groupType].name, groupType)
-    local employeeFullName = firedEmployee.PlayerData.charinfo.firstname..' '..firedEmployee.PlayerData.charinfo.lastname
+    local employeeFullName = firedEmployee.PlayerData.charinfo.firstname .. ' ' .. firedEmployee.PlayerData.charinfo.lastname
 
     if success then
         local logArea = groupType == 'gang' and 'Gang' or 'Boss'
         local logType = groupType == 'gang' and locale('error.gang_fired') or locale('error.job_fired')
         exports.qbx_core:Notify(source, logType, 'success')
-        logger.log({source = 'qbx_management', event = 'fireEmployee', message = string.format('%s | %s fired %s from %s', logArea, playerFullName, employeeFullName, organizationLabel), webhook = config.discordWebhook})
+        logger.log({ source = 'qbx_management', event = 'fireEmployee', message = string.format('%s | %s fired %s from %s', logArea, playerFullName, employeeFullName, organizationLabel), webhook = config.discordWebhook })
     else
         exports.qbx_core:Notify(source, locale('error.unable_fire'), 'error')
     end
